@@ -2,7 +2,7 @@ package models
 
 import (
 	"bytes"
-	"html/template"
+	"text/template"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -34,6 +34,7 @@ const (
 	EventServiceUpdate       EventType = "SERVICE_UPDATE"
 	EventServiceDelete       EventType = "SERVICE_DELETE"
 	EventServiceDeleteFailed EventType = "SERVICE_DELETE_FAILED"
+	EventServiceCreateFailed EventType = "SERVICE_CREATE_FAILED"
 
 	EventLogLevelINFO  EventLogLevel = "INFO"
 	EventLogLevelERROR EventLogLevel = "ERROR"

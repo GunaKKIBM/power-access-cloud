@@ -52,6 +52,11 @@ spec:
         image: controller:latest
         imagePullPolicy: Always
         name: manager-config
+        env:
+          - name: NOTIFICATION_MIN_INTERVAL_MINUTES
+            value: '120'
+          - name: NOTIFY_VM_CREATION_FAILURE
+            value: 'true'
 #        env:
 #        - name: IBMCLOUD_APIKEY
 #          valueFrom:
