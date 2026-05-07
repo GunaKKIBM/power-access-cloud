@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { DatePicker, DatePickerInput, Modal, TextArea } from "@carbon/react";
 import { extendServices } from "../../services/request";
 
+const MIN_JUSTIFICATION_LENGTH = 100;
+const MAX_EXTENSION_MONTHS = 6;
+
 const AdminServiceExtend = ({ pagename, selectRows, setActionProps, response }) => {
   const navigate = useNavigate();
   const service = selectRows?.[0];
@@ -20,6 +23,24 @@ const AdminServiceExtend = ({ pagename, selectRows, setActionProps, response }) 
   const [selectedDate, setSelectedDate] = useState(initialExpiryDate);
   const [justification, setJustification] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Calculate max allowed date (6 months from current expiry)
+  const maxAllowedDate = useMemo(() => {
+    if (!initialExpiryDate) return null;
+    const maxDate = new Date(initialExpiryDate);
+    maxDate.setMonth(maxDate.getMonth() + MAX_EXTENSION_MONTHS);
+    return maxDate;
+  }, [initialExpiryDate]);
+
+  // Check if selected date exceeds 6 months limit
+  const isDateExceeded = selectedDate && maxAllowedDate && selectedDate > maxAllowedDate;
+
+  // Format date for display
+  const formatDate = (dateObj) => {
+    if (!dateObj) return "";
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    return dateObj.toLocaleDateString('en-US', options);
+  };
 
   const closeModal = () => {
     if (!submitting) {
@@ -92,12 +113,17 @@ const AdminServiceExtend = ({ pagename, selectRows, setActionProps, response }) 
       onRequestSubmit={onSubmit}
       primaryButtonText={submitting ? "Submitting..." : "Submit"}
       secondaryButtonText="Cancel"
-      primaryButtonDisabled={submitting}
+      primaryButtonDisabled={submitting || justification.length < MIN_JUSTIFICATION_LENGTH || isDateExceeded}
     >
       <div>
         <p style={{ marginBottom: "1rem" }}>
           Choose a new expiry date for this service and submit the request.
         </p>
+        {maxAllowedDate && (
+          <p className="text-muted" style={{ fontSize: '0.875rem', marginBottom: '1rem' }}>
+            Maximum extension allowed is 6 months from current expiry date (up to {formatDate(maxAllowedDate)}).
+          </p>
+        )}
 
         <div className="mb-3">
           <DatePicker
@@ -115,16 +141,24 @@ const AdminServiceExtend = ({ pagename, selectRows, setActionProps, response }) 
               placeholder="mm/dd/yyyy"
             />
           </DatePicker>
+          {isDateExceeded && maxAllowedDate && (
+            <p className="text-danger" style={{ fontSize: '0.875rem', marginTop: '0.5rem', marginBottom: 0 }}>
+              Please select a date on or before {formatDate(maxAllowedDate)}, as maximum extension allowed is 6 months from current expiry date.
+            </p>
+          )}
         </div>
 
         <div className="mb-3" style={{ marginTop: "1rem" }}>
           <TextArea
             id="admin-service-expiry-justification"
             labelText="Justification"
-            placeholder="Enter your justification for changing the service expiry."
+            placeholder="Enter your justification for changing the service expiry (minimum 100 characters)."
             value={justification}
             onChange={(e) => setJustification(e.target.value)}
           />
+          <small className="text-muted">
+            {justification.length}/{MIN_JUSTIFICATION_LENGTH} characters (minimum required)
+          </small>
         </div>
       </div>
     </Modal>
