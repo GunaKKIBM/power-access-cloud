@@ -1,29 +1,52 @@
 // import axios from "axios";
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { extendServices } from "../../services/request";
 import { useNavigate } from "react-router-dom";
 import { Modal, DatePicker, DatePickerInput } from "@carbon/react";
 
 const MIN_JUSTIFICATION_LENGTH = 100;
+const MAX_EXTENSION_MONTHS = 6;
 
 const ServiceExtend = ({ pagename, selectRows, setActionProps, response }) => {
-  console.log(selectRows.display_name)
   const [loading, setLoading] = useState(false);
   const name = selectRows[0]?.name;
   const [justification, setJustification] = useState("");
-  let expiry = "";
-  // selectRows[0].cells.forEach((item) => {
-  //   if (item.id.split(":")[1] === "expiry") {
-  //     expiry = new Date(item?.value);
-  //   }
-  // });
+  
+  // Parse expiry date from service
+  const initialExpiryDate = useMemo(() => {
+    if (!selectRows[0]?.expiry) {
+      return null;
+    }
 
-  expiry=new Date(selectRows[0].expiry.split(" ")[0])
+    const parsedDate = new Date(selectRows[0].expiry);
+    return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
+  }, [selectRows]);
 
-  console.log(expiry)
-  const [date, setDate] = useState(expiry);
+  const [date, setDate] = useState(initialExpiryDate);
 
   let navigate = useNavigate();
+
+  // Calculate max allowed date (6 months from current expiry)
+  const maxAllowedDate = useMemo(() => {
+    if (!initialExpiryDate) return null;
+    const maxDate = new Date(initialExpiryDate);
+    maxDate.setMonth(maxDate.getMonth() + MAX_EXTENSION_MONTHS);
+    return maxDate;
+  }, [initialExpiryDate]);
+
+  // Check if selected date exceeds 6 months limit
+  const isDateExceeded = useMemo(() => {
+    if (!date || !maxAllowedDate) return false;
+    const selectedDate = new Date(date);
+    return selectedDate > maxAllowedDate;
+  }, [date, maxAllowedDate]);
+
+  // Format date for display
+  const formatDate = (dateObj) => {
+    if (!dateObj || isNaN(dateObj.getTime())) return "";
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    return dateObj.toLocaleDateString('en-US', options);
+  };
 
   const onSubmit = async () => {
     setLoading(true);
@@ -67,7 +90,7 @@ const ServiceExtend = ({ pagename, selectRows, setActionProps, response }) => {
       open={true}
       primaryButtonText={loading ? "Submitting..." : "Submit"}
       secondaryButtonText={"Cancel"}
-      primaryButtonDisabled={loading || justification.length < MIN_JUSTIFICATION_LENGTH}
+      primaryButtonDisabled={loading || justification.length < MIN_JUSTIFICATION_LENGTH || isDateExceeded}
     >
       <div>
         <div className="mb-3">
@@ -92,7 +115,7 @@ const ServiceExtend = ({ pagename, selectRows, setActionProps, response }) => {
             Select date<span className="text-danger">*</span>
           </label>
         <p className="text-muted" style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-          Maximum extension allowed is 6 months from the current expiry date.
+          Maximum extension allowed is 6 months from current expiry date (up to {formatDate(maxAllowedDate)}).
         </p>
         <DatePicker
           allowInput={true}
@@ -107,6 +130,11 @@ const ServiceExtend = ({ pagename, selectRows, setActionProps, response }) => {
         >
           <DatePickerInput placeholder="dd/mm/yyyy" />
         </DatePicker>
+        {isDateExceeded && (
+          <p className="text-danger" style={{ fontSize: '0.875rem', marginTop: '0.5rem', marginBottom: 0 }}>
+            Please select a date on or before {formatDate(maxAllowedDate)}, as maximum extension allowed is 6 months from current expiry date.
+          </p>
+        )}
       </div>
     </Modal>
   );
