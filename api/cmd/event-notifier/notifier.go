@@ -33,8 +33,11 @@ func notifier(db db.DB, mailClient mailclient.Notifier) {
 			continue
 		}
 		l.Info("Notifying")
-		if event.UserEmail, err = getEmailForEvent(event); err != nil {
-			l.Error("Error retrieving user information", zap.Error(err))
+		if event.Notify {
+			if event.UserEmail, err = getEmailForEvent(event); err != nil {
+				l.Error("Error retrieving user information", zap.Error(err))
+				continue
+			}
 		}
 		if err = mailClient.Notify(*event); err != nil {
 			l.Error("Error notifying", zap.Error(err))
