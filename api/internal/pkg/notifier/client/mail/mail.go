@@ -1,6 +1,7 @@
 package mail
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -35,12 +36,21 @@ func (m *Mail) Notify(event models.Event) error {
 	m1.AddContent(content)
 
 	personalization := mail.NewPersonalization()
-	to := mail.NewEmail("", event.UserEmail)
-	// TODO: Add BCC to all the admins or to the group alias when we have it
-	bcc := mail.NewEmail("IBM® Power® Access Cloud", "PowerACL@ibm.com")
-	personalization.AddTos(to)
+	hasRecipients := false
+	if event.Notify {
+		if event.UserEmail == "" {
+			return errors.New("user email is required when user notification is enabled")
+		}
+		personalization.AddTos(mail.NewEmail("", event.UserEmail))
+		hasRecipients = true
+	}
 	if event.NotifyAdmin {
-		personalization.AddBCCs(bcc)
+		// TODO: Add BCC to all the admins or to the group alias when we have it
+		personalization.AddBCCs(mail.NewEmail("IBM® Power® Access Cloud", "PowerACL@ibm.com"))
+		hasRecipients = true
+	}
+	if !hasRecipients {
+		return errors.New("no notification recipients configured for event")
 	}
 	personalization.Subject = fmt.Sprintf("IBM® Power® Access Cloud - %s", event.Type)
 	if m.envPrefixForEmail != "" {
